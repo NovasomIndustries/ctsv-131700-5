@@ -15,16 +15,23 @@ typedef struct _SystemFlagsDef
 	uint8_t 	battery_counter;
 	uint8_t 	tick_counter;
 	uint8_t 	work_counter;
+	uint8_t 	initial_blank_counter;
 	uint8_t 	stored_work_counter;
 	uint8_t 	splash_counter;
 	uint16_t 	powerdown_counter;
+	uint16_t 	powerdown_loop_counter;
+	uint16_t 	poweroff_counter;
 	uint8_t 	button_plus_debounce;
 	uint8_t 	button_minus_debounce;
 	uint8_t 	button_on_debounce;
+	uint8_t 	button_on_work_counter;
+	uint8_t		buttons_on_work_flags;
 	uint8_t		buttons_flags;
 	float	 	battery_value;
 	uint16_t 	motor_value;
 	uint8_t		motor_flags;
+	uint8_t		pwdown_posx , pwdown_posy;
+	uint16_t 	digit_color;
 }SystemFlagsDef;
 
 /* surgy_flags definitions */
@@ -33,9 +40,7 @@ typedef struct _SystemFlagsDef
 #define	COUNTER_ACTIVE_FLAG		0x20
 #define	COUNTER_PAUSED_FLAG		0x10
 #define	COUNTER_EXPIRED_FLAG	0x08
-#define	BUTTONS_ENABLE_FLAG		0x04
 #define	POWEWRDOWN_FLAG			0x02
-#define	BATTERY_FLAG			0x01
 
 /* buttons_flags definitions */
 #define	BUTTON_PRESSED_FLAG		0x80
@@ -46,6 +51,9 @@ typedef struct _SystemFlagsDef
 /* motor_flags */
 #define	MOTOR_ON_FLAG			0x80
 
+/* buttons_on_work_flags */
+#define	SET_PAUSE_FLAG		0x80
+#define	CLEAR_PAUSE_FLAG	0x01
 
 extern	TIM_HandleTypeDef htim1;
 extern	TIM_HandleTypeDef htim3;
@@ -64,14 +72,19 @@ extern	ADC_HandleTypeDef hadc1;
 #define	ADC_LEN				32
 #define	SPLASH_POSITIONX	25
 #define	SPLASH_POSITIONY	20
-#define	BATTERY_POSITIONX	35
+#define	BATTERY_POSITIONX	0
 #define	BATTERY_POSITIONY	60
 #define	COUNTER_POSITIONX	50
 #define	COUNTER_POSITIONY	30
 
+/* those are in 100 mSec unit */
+#define	INI_BLANK_COUNTER	20
 #define	SPLASH_COUNTER		50
 #define	BATTERY_COUNTER		20
 #define	POWERDOWN_COUNTER	300
+#define	POWEROFF_COUNTER	1200
+#define	WORK_COUNTER		30
+#define	MAX_WORK_COUNTER	180
 
 #define	MOTOR_ACCELERATION_K	50
 #define	IDLE_COLOR				ST7735_BLUE
@@ -79,6 +92,7 @@ extern	ADC_HandleTypeDef hadc1;
 #define	MORE10_COLOR			ST7735_YELLOW
 #define	LESS10_COLOR			ST7735_RED
 #define	BATTERY_COLOR			ST7735_GREEN
+#define	PWDOWN_COLOR			ST7735_GREY
 
 
 

@@ -21,7 +21,7 @@ typedef struct {
 } Video;
 
 #define	ZERO_BRIGHTNESS	0
-#define	LOW_BRIGHTNESS	3000
+#define	LOW_BRIGHTNESS	2500
 #define	HALF_BRIGHTNESS	5000
 #define	FULL_BRIGHTNESS	10000
 
