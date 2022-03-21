@@ -8,6 +8,9 @@
 #ifndef SRC_SURGY_SURGY_MAIN_H_
 #define SRC_SURGY_SURGY_MAIN_H_
 
+
+#define 	TRIES_BUFFERS 		__attribute__((section(".tries_buffers")))
+
 typedef struct _SystemFlagsDef
 {
 	uint8_t		surgy_flags;
@@ -76,6 +79,8 @@ extern	ADC_HandleTypeDef hadc1;
 #define	BATTERY_POSITIONY	60
 #define	COUNTER_POSITIONX	50
 #define	COUNTER_POSITIONY	30
+#define	REMAINING_POSITIONX	120
+#define	REMAINING_POSITIONY	60
 
 /* those are in 100 mSec unit */
 #define	INI_BLANK_COUNTER	20
@@ -84,6 +89,7 @@ extern	ADC_HandleTypeDef hadc1;
 #define	POWERDOWN_COUNTER	300
 #define	POWEROFF_COUNTER	1200
 #define	WORK_COUNTER		30
+#define	DBG_WORK_COUNTER	10
 #define	MAX_WORK_COUNTER	180
 
 #define	MOTOR_ACCELERATION_K	50
@@ -93,8 +99,12 @@ extern	ADC_HandleTypeDef hadc1;
 #define	LESS10_COLOR			ST7735_RED
 #define	BATTERY_COLOR			ST7735_GREEN
 #define	PWDOWN_COLOR			ST7735_GREY
+#define	REMAINING_COLOR			ST7735_YELLOW
+#define	CNTROFF_COLOR			ST7735_BLACK
 
-
+#define FLASH_USER_END_ADDR     (FLASH_BASE + FLASH_SIZE)   /* End @ of user Flash area */
+#define	WRITEABLE_ADDRESS		(FLASH_USER_END_ADDR - FLASH_PAGE_SIZE)
+#define	MAX_NUMBER_OF_OPS		16
 
 extern	void tim100msec_callback(void);
 extern	void SurgyMainLoop(void);

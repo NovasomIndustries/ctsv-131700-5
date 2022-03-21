@@ -13,6 +13,59 @@ SystemFlagsDef	SystemFlags;
 
 void SurgyUpdateCounter(uint16_t color);
 
+uint32_t Page = 0, NbOfPages = 1;
+uint32_t Address = 0, PageError = 0;
+uint32_t operations;
+TRIES_BUFFERS	__attribute__ ((aligned (16)))	uint32_t flash_operations = 0xffffffff;
+
+static FLASH_EraseInitTypeDef EraseInitStruct = {0};
+
+static uint32_t GetPage(uint32_t Addr)
+{
+  return (Addr - FLASH_BASE) / FLASH_PAGE_SIZE;;
+}
+
+uint32_t flash_number_of_ops;
+
+uint32_t GetTries(void)
+{
+uint32_t number_of_ops;
+uint32_t *addr;
+
+	flash_number_of_ops = (uint32_t )&flash_operations;
+
+	addr = (uint32_t * )WRITEABLE_ADDRESS;
+	number_of_ops = *addr;
+/*
+	if ( number_of_ops > 1 )
+		number_of_ops = 1;
+*/
+	if ( number_of_ops > MAX_NUMBER_OF_OPS )
+		number_of_ops = MAX_NUMBER_OF_OPS;
+	return number_of_ops;
+}
+
+uint64_t number_of_ops64;
+
+uint32_t WriteTries(uint32_t local_number_of_ops)
+{
+	number_of_ops64 = (uint64_t )local_number_of_ops;
+	HAL_FLASH_Unlock();
+	Page = GetPage(WRITEABLE_ADDRESS);
+	EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
+	EraseInitStruct.Page        = Page;
+	EraseInitStruct.NbPages     = NbOfPages;
+	if (HAL_FLASHEx_Erase(&EraseInitStruct, &PageError) != HAL_OK)
+		return 1;
+	Address = WRITEABLE_ADDRESS;
+	if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, Address, number_of_ops64) == HAL_OK)
+	{
+		HAL_FLASH_Lock();
+		return 0;
+	}
+	return 1;
+}
+
 void HAL_GPIO_EXTI_Falling_Callback(uint16_t GPIO_Pin)
 {
 	switch(GPIO_Pin)
@@ -132,12 +185,12 @@ void SurgyPWM_Callback(void)
 
 static void SurgyStartPWM(void)
 {
-	HAL_NVIC_DisableIRQ(EXTI0_1_IRQn);
-	HAL_NVIC_DisableIRQ(EXTI2_3_IRQn);
-	HAL_NVIC_DisableIRQ(EXTI4_15_IRQn);
-	SystemFlags.motor_flags |= MOTOR_ON_FLAG;
-	SystemFlags.motor_value = 0;
-	MOTOR_TIMER.Instance->CCR1 = SystemFlags.motor_value;
+		HAL_NVIC_DisableIRQ(EXTI0_1_IRQn);
+		HAL_NVIC_DisableIRQ(EXTI2_3_IRQn);
+		HAL_NVIC_DisableIRQ(EXTI4_15_IRQn);
+		SystemFlags.motor_flags |= MOTOR_ON_FLAG;
+		SystemFlags.motor_value = 0;
+		MOTOR_TIMER.Instance->CCR1 = SystemFlags.motor_value;
 }
 
 static void SurgyStopPWM(void)
@@ -180,9 +233,13 @@ void SurgyInit(void)
 	SystemFlags.motor_value = 0;
 	HAL_TIM_PWM_Start_IT(&MOTOR_TIMER, TIM_CHANNEL_1);
 	MOTOR_TIMER.Instance->CCR1 = SystemFlags.motor_value;
+	operations = GetTries();
+	Page = GetPage(WRITEABLE_ADDRESS);
 }
 
 static uint8_t	cleared = 0;
+//#define	DEBUG_RUN	1
+
 static void SurgyManageButtons(void)
 {
 char	line[8];
@@ -217,7 +274,11 @@ char	line[8];
 		}
 		if (( SystemFlags.buttons_flags & ( MINUS_PRESSED_FLAG  ) ) == MINUS_PRESSED_FLAG)
 		{
+#ifdef	DEBUG_RUN
+			if ( SystemFlags.work_counter > DBG_WORK_COUNTER )
+#else
 			if ( SystemFlags.work_counter > WORK_COUNTER )
+#endif
 			{
 				SystemFlags.work_counter -= 10;
 				SurgyUpdateCounter(IDLE_COLOR);
@@ -231,12 +292,33 @@ char	line[8];
 			cleared++;
 			if (( SystemFlags.surgy_flags & COUNTER_ACTIVE_FLAG) == 0)
 			{
-				SystemFlags.tick_counter = 0;
-				SystemFlags.surgy_flags |= COUNTER_ACTIVE_FLAG;
-				SystemFlags.stored_work_counter = SystemFlags.work_counter;
-				SystemFlags.surgy_flags &= ~SEC1_FLAG ;
-				SurgyUpdateCounter(MORE30_COLOR);
-				SurgyStartPWM();
+				operations --;
+				if ( operations != 0 )
+				{
+					WriteTries(operations);
+					SystemFlags.tick_counter = 0;
+					SystemFlags.surgy_flags |= COUNTER_ACTIVE_FLAG;
+					SystemFlags.stored_work_counter = SystemFlags.work_counter;
+					SystemFlags.surgy_flags &= ~SEC1_FLAG ;
+					SurgyUpdateCounter(MORE30_COLOR);
+					SurgyStartPWM();
+				}
+				else
+				{
+					SurgyUpdateCounter(LESS10_COLOR);
+					HAL_Delay(500);
+					SurgyUpdateCounter(CNTROFF_COLOR);
+					HAL_Delay(500);
+					SurgyUpdateCounter(LESS10_COLOR);
+					HAL_Delay(500);
+					SurgyUpdateCounter(CNTROFF_COLOR);
+					HAL_Delay(500);
+					SurgyUpdateCounter(LESS10_COLOR);
+					HAL_Delay(500);
+					SurgyUpdateCounter(CNTROFF_COLOR);
+					HAL_Delay(500);
+					SurgyUpdateCounter(MORE30_COLOR);
+				}
 			}
 			SystemFlags.buttons_flags &= ~ON_PRESSED_FLAG;
 		}
@@ -254,6 +336,24 @@ char	line[8];
 	SystemFlags.powerdown_counter = POWERDOWN_COUNTER;
 	SystemFlags.poweroff_counter = POWEROFF_COUNTER;
 	SystemFlags.surgy_flags &= ~POWEWRDOWN_FLAG;
+}
+
+void SurgyUpdateRemaining(void)
+{
+char	line[8];
+uint16_t	color;
+
+	if ( operations > 8 )
+		color = ST7735_GREEN;
+	else
+	{
+		if ( operations > 1 )
+			color = ST7735_YELLOW;
+		else
+			color = ST7735_RED;
+	}
+	sprintf(line,"%d  ",(int )(operations-1));
+	ST7735_WriteString(REMAINING_POSITIONX,REMAINING_POSITIONY,line,Font_11x18,color,ST7735_BLACK);
 }
 
 static void SurgyManageCounter(void)
@@ -303,6 +403,7 @@ int		uu;
 			ST7735_WriteString(SPLASH_POSITIONX,SPLASH_POSITIONY,"Surgy",USED_FONT,ST7735_BLACK,ST7735_BLACK);
 			ST7735_WriteString(BATTERY_POSITIONX,BATTERY_POSITIONY,line,Font_11x18,ST7735_BLACK,ST7735_BLACK);
 			SurgyUpdateCounter(IDLE_COLOR);
+			SurgyUpdateRemaining();
 			__HAL_GPIO_EXTI_CLEAR_FALLING_IT(SPEED_PLUS_Pin);
 			__HAL_GPIO_EXTI_CLEAR_FALLING_IT(SPEED_MINUS_Pin);
 			__HAL_GPIO_EXTI_CLEAR_FALLING_IT(ON_Pin);
@@ -423,5 +524,6 @@ void SurgyMainLoop(void)
 		SystemFlags.surgy_flags &= ~COUNTER_EXPIRED_FLAG;
 		SurgyUpdateCounter(IDLE_COLOR);
 		SurgyStopPWM();
+		SurgyUpdateRemaining();
 	}
 }
