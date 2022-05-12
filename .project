@@ -30,4 +30,10 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
+	<variableList>
+		<variable>
+			<name>ddd</name>
+			<value>file:/C:/Users/hamed/Desktop/novasom/ctsv-131700-5-master/ctsv-131700-5-master/Core/Src/Surgy</value>
+		</variable>
+	</variableList>
 </projectDescription>
